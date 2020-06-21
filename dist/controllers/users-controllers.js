@@ -1,20 +1,22 @@
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
-}
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.login = exports.signup = exports.getUsers = void 0;
 const express_validator_1 = require("express-validator");
 const user_1 = require("../models/user");
 const http_error_1 = __importDefault(require("../models/http-error"));
-exports.getUsers = (req, res, next) => __awaiter(this, void 0, void 0, function* () {
+exports.getUsers = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     let users;
     try {
         users = yield user_1.User.find({}, "-password");
@@ -24,7 +26,7 @@ exports.getUsers = (req, res, next) => __awaiter(this, void 0, void 0, function*
     }
     res.json({ users: users.map((user) => user.toObject({ getters: true })) });
 });
-exports.signup = (req, res, next) => __awaiter(this, void 0, void 0, function* () {
+exports.signup = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const errors = express_validator_1.validationResult(req);
     if (!errors.isEmpty()) {
         return next(new http_error_1.default(422, "Invalid inputs passed, please check your data"));
@@ -55,7 +57,7 @@ exports.signup = (req, res, next) => __awaiter(this, void 0, void 0, function* (
     }
     res.status(201).json({ user: createdUser.toObject({ getters: true }) });
 });
-exports.login = (req, res, next) => __awaiter(this, void 0, void 0, function* () {
+exports.login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { password, email } = req.body;
     let existingUser;
     try {

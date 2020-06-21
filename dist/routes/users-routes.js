@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.router = void 0;
 const express_1 = require("express");
 const express_validator_1 = require("express-validator");
 const users_controllers_1 = require("../controllers/users-controllers");

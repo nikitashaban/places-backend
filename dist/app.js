@@ -1,7 +1,7 @@
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
-}
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const body_parser_1 = __importDefault(require("body-parser"));
@@ -11,6 +11,12 @@ const places_routes_1 = require("./routes/places-routes");
 const users_routes_1 = require("./routes/users-routes");
 const app = express_1.default();
 app.use(body_parser_1.default.json());
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
+    next();
+});
 app.use("/api/users", users_routes_1.router);
 app.use("/api/places", places_routes_1.router);
 app.use((req, res, next) => {

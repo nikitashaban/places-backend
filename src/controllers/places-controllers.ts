@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { RequestHandler } from "express";
 import { validationResult } from "express-validator";
+import fs from 'fs'
 
 import { Place, IPlace } from "../models/place";
 import { User } from "../models/user";
@@ -55,7 +56,7 @@ export const createPlace: RequestHandler = async (req, res, next) => {
       new HttpError(422, "Invalid inputs passed, please check your data")
     );
   }
-  const { title, description, address, creator } = req.body;
+  const { title, description, address } = req.body;
   let coordinates;
   try {
     coordinates = await getCoordsForAddress();
@@ -68,14 +69,13 @@ export const createPlace: RequestHandler = async (req, res, next) => {
     description,
     address,
     coordinates,
-    image:
-      "https://p.bigstockphoto.com/GeFvQkBbSLaMdpKXF1Zv_bigstock-Aerial-View-Of-Blue-Lakes-And--227291596.jpg",
-    creator,
+    image: req.file.path,
+    creator: req.userData.userId,
   });
 
   let user;
   try {
-    user = await User.findById(creator);
+    user = await User.findById(req.userData.userId);
   } catch (err) {
     return next(new HttpError(500, "Creating place failed, please try again"));
   }
@@ -118,6 +118,12 @@ export const updatePlace: RequestHandler = async (req, res, next) => {
     );
   }
 
+  if (place?.creator.toString() !== req.userData.userId) {
+    return next(
+      new HttpError(401, "You are not allowed to update this place")
+    );
+  }
+
   place!.title = title;
   place!.description = description;
 
@@ -142,10 +148,19 @@ export const deletePlace: RequestHandler = async (req, res, next) => {
       new HttpError(500, "Something went wrong, could not delete a place")
     );
   }
+
+
+
   if (!place) {
     return next(new HttpError(404, "Could not find place for this id"));
   }
 
+  if (place?.creator.id !== req.userData.userId) {
+    return next(
+      new HttpError(401, "You are not allowed to delete this place")
+    );
+  }
+  const imagePath = place.image
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
@@ -158,6 +173,8 @@ export const deletePlace: RequestHandler = async (req, res, next) => {
       new HttpError(500, "Something went wrong, could not delete a place")
     );
   }
-
+  fs.unlink(imagePath, err => {
+    console.log(err)
+  })
   res.status(200).json({ message: "Place deleted" });
 };

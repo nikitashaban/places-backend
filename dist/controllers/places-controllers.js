@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deletePlace = exports.updatePlace = exports.createPlace = exports.getPlacesByUserId = exports.getPlaceById = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const express_validator_1 = require("express-validator");
+const fs_1 = __importDefault(require("fs"));
 const place_1 = require("../models/place");
 const user_1 = require("../models/user");
 const location_1 = require("../util/location");
@@ -54,7 +55,7 @@ exports.createPlace = (req, res, next) => __awaiter(void 0, void 0, void 0, func
     if (!errors.isEmpty()) {
         return next(new http_error_1.default(422, "Invalid inputs passed, please check your data"));
     }
-    const { title, description, address, creator } = req.body;
+    const { title, description, address } = req.body;
     let coordinates;
     try {
         coordinates = yield location_1.getCoordsForAddress();
@@ -67,12 +68,12 @@ exports.createPlace = (req, res, next) => __awaiter(void 0, void 0, void 0, func
         description,
         address,
         coordinates,
-        image: "https://p.bigstockphoto.com/GeFvQkBbSLaMdpKXF1Zv_bigstock-Aerial-View-Of-Blue-Lakes-And--227291596.jpg",
-        creator,
+        image: req.file.path,
+        creator: req.userData.userId,
     });
     let user;
     try {
-        user = yield user_1.User.findById(creator);
+        user = yield user_1.User.findById(req.userData.userId);
     }
     catch (err) {
         return next(new http_error_1.default(500, "Creating place failed, please try again"));
@@ -107,6 +108,9 @@ exports.updatePlace = (req, res, next) => __awaiter(void 0, void 0, void 0, func
     catch (err) {
         return next(new http_error_1.default(500, "Something went wrong, could not update a place"));
     }
+    if ((place === null || place === void 0 ? void 0 : place.creator.toString()) !== req.userData.userId) {
+        return next(new http_error_1.default(401, "You are not allowed to update this place"));
+    }
     place.title = title;
     place.description = description;
     try {
@@ -129,6 +133,10 @@ exports.deletePlace = (req, res, next) => __awaiter(void 0, void 0, void 0, func
     if (!place) {
         return next(new http_error_1.default(404, "Could not find place for this id"));
     }
+    if ((place === null || place === void 0 ? void 0 : place.creator.id) !== req.userData.userId) {
+        return next(new http_error_1.default(401, "You are not allowed to delete this place"));
+    }
+    const imagePath = place.image;
     try {
         const sess = yield mongoose_1.default.startSession();
         sess.startTransaction();
@@ -140,5 +148,8 @@ exports.deletePlace = (req, res, next) => __awaiter(void 0, void 0, void 0, func
     catch (err) {
         return next(new http_error_1.default(500, "Something went wrong, could not delete a place"));
     }
+    fs_1.default.unlink(imagePath, err => {
+        console.log(err);
+    });
     res.status(200).json({ message: "Place deleted" });
 });

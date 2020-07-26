@@ -10,6 +10,7 @@ export interface IPlace extends Document {
     lat: number;
     lng: number;
   };
+  image: string;
   address: string;
   creator: string;
 }
@@ -22,6 +23,7 @@ const PlaceSchema = new Schema({
     lng: { type: Number, required: true },
   },
   address: { type: String, required: true },
+  image: { type: String, required: true },
   creator: { type: mongoose.Types.ObjectId, required: true, ref: "User" },
 });
 

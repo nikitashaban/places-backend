@@ -14,6 +14,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.login = exports.signup = exports.getUsers = void 0;
 const express_validator_1 = require("express-validator");
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const user_1 = require("../models/user");
 const http_error_1 = __importDefault(require("../models/http-error"));
 exports.getUsers = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
@@ -40,13 +42,20 @@ exports.signup = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
         return next(new http_error_1.default(500, "Signing up failed, please try again later"));
     }
     if (existingUser) {
-        next(new http_error_1.default(422, "User exists already, please login instead"));
+        return next(new http_error_1.default(422, "User exists already, please login instead"));
+    }
+    let hashedPassword;
+    try {
+        hashedPassword = yield bcryptjs_1.default.hash(password, 12);
+    }
+    catch (err) {
+        return next(new http_error_1.default(500, 'Could not create user'));
     }
     const createdUser = new user_1.User({
         name,
-        password,
+        password: hashedPassword,
         email,
-        image: "https://p.bigstockphoto.com/GeFvQkBbSLaMdpKXF1Zv_bigstock-Aerial-View-Of-Blue-Lakes-And--227291596.jpg",
+        image: req.file.path,
         places: [],
     });
     try {
@@ -55,7 +64,14 @@ exports.signup = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
     catch (err) {
         return next(new http_error_1.default(500, "Signing Up failed, please try again"));
     }
-    res.status(201).json({ user: createdUser.toObject({ getters: true }) });
+    let token;
+    try {
+        token = jsonwebtoken_1.default.sign({ userId: createdUser.id, email: createdUser.email }, process.env.JWT_KEY, { expiresIn: '1h' });
+    }
+    catch (err) {
+        return next(new http_error_1.default(500, "Signing Up failed, please try again"));
+    }
+    res.status(201).json({ userId: createdUser.id, email: createdUser.email, token: token });
 });
 exports.login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { password, email } = req.body;
@@ -66,8 +82,25 @@ exports.login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
     catch (err) {
         return next(new http_error_1.default(500, "Logging in failed, please try again later"));
     }
-    if (!existingUser || existingUser.password !== password) {
-        return next(new http_error_1.default(401, "Could not identify user, credentials seem to be wrong."));
+    if (!existingUser) {
+        return next(new http_error_1.default(403, "Could not identify user, credentials seem to be wrong."));
     }
-    res.json({ message: "Logged in" });
+    let isValidPassword;
+    try {
+        isValidPassword = yield bcryptjs_1.default.compare(password, existingUser.password);
+    }
+    catch (err) {
+        return next(new http_error_1.default(500, 'Could not identify user, because of wrong credentials'));
+    }
+    if (!isValidPassword) {
+        return next(new http_error_1.default(403, "Could not identify user, credentials seem to be wrong."));
+    }
+    let token;
+    try {
+        token = jsonwebtoken_1.default.sign({ userId: existingUser.id, email: existingUser.email }, process.env.JWT_KEY, { expiresIn: '1h' });
+    }
+    catch (err) {
+        return next(new http_error_1.default(500, "Signing Up failed, please try again"));
+    }
+    res.json({ userId: existingUser.id, email: existingUser.email, token: token });
 });
